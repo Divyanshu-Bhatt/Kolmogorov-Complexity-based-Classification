@@ -251,25 +251,3 @@ class HuffmanCoded(object):
         """
 
         return self.__sizeof__() / (np.prod(self.image_shape) * 8 * self.num_images)
-
-
-# if __name__ == "__main__":
-#     import matplotlib.pyplot as plt
-
-#     image_name = [
-#         "4.2.03.tiff",
-#         "5.1.10.tiff",
-#         "5.1.11.tiff",
-#         "5.2.09.tiff",
-#         "5.3.02.tiff",
-#         "7.1.01.tiff",
-#         "7.1.02.tiff",
-#         "7.1.08.tiff",
-#     ]
-
-#     for name in image_name:
-#         image = plt.imread(name)
-#         huffman = HuffmanCoded(image)
-#         print(f"Compression ratio for {name}: {huffman.compressionRatio()}")
-
-#     breakpoint()

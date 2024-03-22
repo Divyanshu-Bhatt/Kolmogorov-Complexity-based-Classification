@@ -253,17 +253,3 @@ class ArithmeticCoded(object):
         """
 
         return self.__sizeof__() / (np.prod(self.image_shape) * 8 * self.num_images)
-
-
-if __name__ == "__main__":
-    import matplotlib.pyplot as plt
-
-    start = time.time()
-    image = np.random.randint(0, 256, (28, 28))
-    arithmetic = ArithmeticCoded(image)
-    print(time.time() - start)
-    decoded_image = arithmetic.decodeImage()
-    print(np.allclose(image, decoded_image))
-    print(arithmetic.compressionRatio())
-    breakpoint()
-    # breakpoint()

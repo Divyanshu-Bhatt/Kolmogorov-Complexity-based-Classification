@@ -52,10 +52,51 @@ def loadMNIST(batch_size, train_bool=False, num_points=1024):
     return dataloader
 
 
+def loadCIFAR10(batch_size, train_bool=False, num_points=1024):
+    """
+    Load the CIFAR10 dataset
+
+    Parameters
+    ----------
+    batch_size : int
+        The batch size
+    train_bool : bool, optional
+        If True, load the train dataset, else load the test dataset
+    num_points : int, optional
+        The number of images to load
+
+    Returns
+    -------
+    dataloader : torch.utils.data.DataLoader
+        The dataloader for the CIFAR10 dataset
+    """
+
+    transform = transforms.Compose(
+        [
+            transforms.ToTensor(),
+            transforms.Lambda(lambda x: x.numpy()),
+            transforms.Lambda(lambda x: (x * 255).astype(np.uint8)),
+        ]
+    )
+
+    dataset = torchvision.datasets.CIFAR10(
+        root="./data", train=train_bool, download=True, transform=transform
+    )
+    indices = np.random.choice(len(dataset), num_points, replace=False)
+    dataset = torch.utils.data.Subset(dataset, indices)
+
+    dataloader = torch.utils.data.DataLoader(
+        dataset, batch_size=batch_size, shuffle=True
+    )
+
+    return dataloader
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--batch_size", type=int, default=16)
     parser.add_argument("--dataset", type=str, default="MNIST")
+    parser.add_argument("--num_points", type=int, default=512)
     args = parser.parse_args()
 
     batch_size = args.batch_size
@@ -68,7 +109,9 @@ if __name__ == "__main__":
     huffman_time = []
 
     if args.dataset == "MNIST":
-        dataloader = loadMNIST(batch_size)
+        dataloader = loadMNIST(batch_size, num_points=args.num_points)
+    elif args.dataset == "CIFAR10":
+        dataloader = loadCIFAR10(batch_size, num_points=args.num_points)
 
     for i, (batch_images, _) in enumerate(tqdm(dataloader, desc="Processing images")):
         batch_images = batch_images.numpy()
@@ -100,6 +143,6 @@ if __name__ == "__main__":
                 "huffman_time": huffman_time,
             }
         ).to_csv(
-            f"./results/compression_ratios_{args.dataset}{args.batch_size}.csv",
+            f"./results/compression_ratios_{args.dataset}_{args.batch_size}.csv",
             index=False,
         )

@@ -20,12 +20,15 @@ class ArithmeticCoded(object):
             The image to be compressed
         """
 
-        decimal.getcontext().prec = 2500
-
         if len(images.shape) == 3:
             images = np.expand_dims(images, 0)
         elif len(images.shape) == 2:
             images = np.expand_dims(np.expand_dims(images, 0), 0)
+
+        if np.prod(images.shape) <= 784:
+            decimal.getcontext().prec = 2500
+        else:
+            decimal.getcontext().prec = 10000
 
         self.num_images = images.shape[0]
         self.image_shape = images.shape[1:]

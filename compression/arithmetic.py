@@ -10,51 +10,59 @@ class ArithmeticCoded(object):
     Arithmetic coding class
     """
 
-    def __init__(self, image):
+    def __init__(self, images):
         """
         Constructor
 
         Parameters
         ----------
-        image : ndarray
+        image : ndarray (N, C, H, W)
             The image to be compressed
         """
 
         decimal.getcontext().prec = 2500
-        self.image_shape = image.shape
-        self.cdf = self.__getCDF__(image)
-        self.encoding = self.encodeImage(image)
 
-    def image2histogram(self, image, normalised=True):
+        if len(images.shape) == 3:
+            images = np.expand_dims(images, 0)
+        elif len(images.shape) == 2:
+            images = np.expand_dims(np.expand_dims(images, 0), 0)
+
+        self.num_images = images.shape[0]
+        self.image_shape = images.shape[1:]
+        self.cdf = self.__getCDF__(images)
+
+        self.encoding = self.encodeImage(images)
+
+    def image2histogram(self, images, normalised=True):
         """
-        Convert an image to a histogram
+        Compute the histogram of an image
 
         Parameters
         ----------
-        image : ndarray
-            The image to convert to a histogram
+        images : ndarray (N, C, H, W)
+            The image to compute the histogram of
         normalised : bool, optional
-            Whether to nominalise the histogram, by default True
+            If True, normalise the histogram
 
         Returns
         -------
-        histogram : ndarray of decimal.Decimal datatype
+        histogram : ndarray
             The histogram of the image
         """
 
-        histogram = np.bincount(image.ravel(), minlength=256).astype(np.float64)
+        histogram = np.bincount(images.ravel(), minlength=256).astype(np.float64)
         if normalised:
-            histogram /= np.prod(image.shape)
+            histogram /= np.prod(images.shape)
 
         return histogram
 
-    def __getCDF__(self, image):
+    def __getCDF__(self, images):
         """
         Compute the cumulative distribution function of the image
 
         Parameters
         ----------
-        image : ndarray
+        images : ndarray (N, C, H, W)
             The image to compute the CDF of
 
         Returns
@@ -63,7 +71,7 @@ class ArithmeticCoded(object):
             The CDF of the image
         """
 
-        histogram = self.image2histogram(image, normalised=True)
+        histogram = self.image2histogram(images, normalised=True)
         cdf = np.cumsum(histogram, dtype=np.float64)
         return cdf
 
@@ -100,38 +108,43 @@ class ArithmeticCoded(object):
         encoding = decimal.Decimal("0." + encoding)
         return encoding
 
-    def encodeImage(self, image):
+    def encodeImage(self, images):
         """
         Encode the image
 
         Parameters
         ----------
-        image : ndarray
+        images : ndarray (N, C, H, W)
             The image to be encoded
 
         Returns
         -------
-        encoded_image : decimal.Decimal
-            The encoded image
+        encoded_images : list of decimal.Decimal
+            The encoded images
         """
-
-        lower_limit = decimal.Decimal(0)
-        upper_limit = decimal.Decimal(1)
 
         cdf = self.cdf.copy()
         cdf = [decimal.Decimal(i) for i in cdf]
         cdf = np.concatenate(([decimal.Decimal(0)], cdf), dtype=decimal.Decimal)
-        transformed_cdf = cdf.copy()
 
-        for pixel_value in image.flatten():
-            lower_limit = transformed_cdf[pixel_value]
-            upper_limit = transformed_cdf[pixel_value + 1]
-            transformed_cdf = lower_limit + (upper_limit - lower_limit) * cdf
+        encoded_images = []
 
-        self.upper_limit = upper_limit
-        self.lower_limit = lower_limit
-        encoded_image = self.__getEncoding__(lower_limit, upper_limit)
-        return encoded_image
+        for image in images:
+            transformed_cdf = cdf.copy()
+            lower_limit = decimal.Decimal(0)
+            upper_limit = decimal.Decimal(1)
+
+            for pixel_value in image.flatten():
+                lower_limit = transformed_cdf[pixel_value]
+                upper_limit = transformed_cdf[pixel_value + 1]
+                transformed_cdf = lower_limit + (upper_limit - lower_limit) * cdf
+
+            self.upper_limit = upper_limit
+            self.lower_limit = lower_limit
+            encode = self.__getEncoding__(lower_limit, upper_limit)
+            encoded_images.append(encode)
+
+        return encoded_images
 
     def __decodePixel__(self, transformed_cdf, cdf, encoded_image):
         """
@@ -162,9 +175,16 @@ class ArithmeticCoded(object):
 
         return pixel_value, transformed_cdf
 
-    def decodeImage(self):
+    def decodeImage(self, encoded_image, cdf):
         """
         Decode the image
+
+        Parameters
+        ----------
+        encoded_image : decimal.Decimal
+            The encoded image
+        cdf : ndarray
+            The CDF of the images
 
         Returns
         -------
@@ -173,17 +193,35 @@ class ArithmeticCoded(object):
         """
 
         decoded_image = np.zeros(np.prod(self.image_shape), dtype=np.uint8)
-        cdf = self.cdf.copy()
-        cdf = [decimal.Decimal(i) for i in cdf]
-        cdf = np.concatenate(([decimal.Decimal(0)], cdf), dtype=decimal.Decimal)
         transformed_cdf = cdf.copy()
 
         for i in range(np.prod(self.image_shape)):
             decoded_image[i], transformed_cdf = self.__decodePixel__(
-                transformed_cdf, cdf, self.encoding
+                transformed_cdf, cdf, encoded_image
             )
 
         return decoded_image.reshape(self.image_shape)
+
+    def decodeAllImages(self):
+        """
+        Decode all the images
+
+        Returns
+        -------
+        decoded_images : numpy.ndarray (N, C, H, W)
+            The decoded images
+        """
+
+        decoded_images = []
+        cdf = self.cdf.copy()
+        cdf = [decimal.Decimal(i) for i in cdf]
+        cdf = np.concatenate(([decimal.Decimal(0)], cdf), dtype=decimal.Decimal)
+
+        for encoded_image in self.encoding:
+            decoded_images.append(self.decodeImage(encoded_image, cdf))
+
+        decoded_images = np.stack(decoded_images, axis=0)
+        return decoded_images
 
     def __sizeof__(self):
         """
@@ -211,7 +249,7 @@ class ArithmeticCoded(object):
             The compression ratio of the image
         """
 
-        return 1 - (self.__sizeof__() / (np.prod(self.image_shape) * 8))
+        return self.__sizeof__() / (np.prod(self.image_shape) * 8 * self.num_images)
 
 
 if __name__ == "__main__":

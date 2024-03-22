@@ -52,27 +52,34 @@ class HuffmanCoded(object):
     Huffman coding class
     """
 
-    def __init__(self, image):
+    def __init__(self, images):
         """
         Constructor
 
         Parameters
         ----------
-        image : numpy.ndarray
+        images : numpy.ndarray (N, C, H, W)
             Images to be compressed
         """
 
-        self.image_shape = image.shape
-        self.huffman_tree = self.__build_tree__(image)
-        self.encoding = self.encodeImage(image)
+        if len(images.shape) == 3:
+            images = np.expand_dims(images, 0)
+        elif len(images.shape) == 2:
+            images = np.expand_dims(np.expand_dims(images, 0), 0)
 
-    def image2histogram(self, image, normalised=True):
+        self.num_images = images.shape[0]
+        self.image_shape = images.shape[1:]
+        self.huffman_tree = self.__build_tree__(images)
+
+        self.encoding = self.encodeImage(images)
+
+    def image2histogram(self, images, normalised=True):
         """
         Compute the histogram of an image
 
         Parameters
         ----------
-        image : ndarray
+        images : ndarray (N, C, H, W)
             The image to compute the histogram of
         normalised : bool, optional
             If True, normalise the histogram
@@ -83,15 +90,20 @@ class HuffmanCoded(object):
             The histogram of the image
         """
 
-        histogram = np.bincount(image.ravel(), minlength=256).astype(np.float64)
+        histogram = np.bincount(images.ravel(), minlength=256).astype(np.float64)
         if normalised:
-            histogram /= np.prod(image.shape)
+            histogram /= np.prod(images.shape)
 
         return histogram
 
-    def __build_tree__(self, image):
+    def __build_tree__(self, images):
         """
         Build the Huffman tree
+
+        Parameters
+        ----------
+        images : numpy.ndarray (N, C, H, W)
+            Images to be compressed using the Huffman tree
 
         Returns
         -------
@@ -99,7 +111,7 @@ class HuffmanCoded(object):
             The root of the Huffman tree
         """
 
-        histogram = self.image2histogram(image, normalised=False)
+        histogram = self.image2histogram(images, normalised=False)
         nodes = [Node(i, histogram[i]) for i in range(256)]
 
         while len(nodes) > 1:
@@ -136,44 +148,53 @@ class HuffmanCoded(object):
 
         return dictionary
 
-    def encodeImage(self, image):
+    def encodeImage(self, images):
         """
         Encode the image using the Huffman tree
 
         Parameters
         ----------
-        image : numpy.ndarray
+        images : numpy.ndarray (N, C, H, W)
             The image to be encoded
 
         Returns
         -------
-        encoded : str
+        encoded_images : list of str
             The encoded image
         """
 
-        encoded_image = ""
+        encoded_images = []
         dictionary = self.__buildDictionary__()
 
-        for val in image.flatten():
-            encoded_image += dictionary[val]
+        for image in images:
+            encode = ""
+            for val in image.flatten():
+                encode += dictionary[val]
 
-        return encoded_image
+            encoded_images.append(encode)
 
-    def decodeImage(self):
+        return encoded_images
+
+    def decodeImage(self, encoded_image):
         """
         Decode the image using the Huffman tree
 
+        Parameters
+        ----------
+        encoded_image : str
+            The encoded image
+
         Returns
         -------
-        decoded : numpy.ndarray
+        decoded : numpy.ndarray (C, H, W)
             The decoded image
         """
 
         decoded_image = np.zeros(np.prod(self.image_shape), dtype=np.uint8)
         iterator = 0
         node = self.huffman_tree
-        for i in range(len(self.encoding)):
-            if self.encoding[i] == "0":
+        for i in range(len(encoded_image)):
+            if encoded_image[i] == "0":
                 node = node.left
             else:
                 node = node.right
@@ -184,6 +205,23 @@ class HuffmanCoded(object):
                 iterator += 1
 
         return decoded_image.reshape(self.image_shape)
+
+    def decodeAllImages(self):
+        """
+        Decode all the images
+
+        Returns
+        -------
+        decoded_images : numpy.ndarray (N, C, H, W)
+            The decoded images
+        """
+
+        decoded_images = []
+        for encoded_image in self.encoding:
+            decoded_images.append(self.decodeImage(encoded_image))
+
+        decoded_images = np.stack(decoded_images, axis=0)
+        return decoded_images
 
     def __sizeof__(self):
         """
@@ -212,7 +250,7 @@ class HuffmanCoded(object):
             The compression ratio
         """
 
-        return 1 - (self.__sizeof__() / (np.prod(self.image_shape) * 8))
+        return self.__sizeof__() / (np.prod(self.image_shape) * 8 * self.num_images)
 
 
 # if __name__ == "__main__":

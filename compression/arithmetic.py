@@ -10,7 +10,7 @@ class ArithmeticCoded(object):
     Arithmetic coding class
     """
 
-    def __init__(self, images):
+    def __init__(self, images, code_directly=True):
         """
         Constructor
 
@@ -18,7 +18,16 @@ class ArithmeticCoded(object):
         ----------
         image : ndarray (N, C, H, W)
             The image to be compressed
+        code_directly : bool, optional
+            If True, code for the image is computed directly
         """
+
+        if images is None:
+            self.num_images = 0
+            self.image_shape = (0, 0, 0)
+            self.cdf = None
+            self.encoding = []
+            return
 
         if len(images.shape) == 3:
             images = np.expand_dims(images, 0)
@@ -34,7 +43,8 @@ class ArithmeticCoded(object):
         self.image_shape = images.shape[1:]
         self.cdf = self.__getCDF__(images)
 
-        self.encoding = self.encodeImage(images)
+        if code_directly:
+            self.encoding = self.encodeImage(images)
 
     def image2histogram(self, images, normalised=True):
         """

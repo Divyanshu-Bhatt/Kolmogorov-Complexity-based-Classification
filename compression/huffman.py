@@ -52,7 +52,7 @@ class HuffmanCoded(object):
     Huffman coding class
     """
 
-    def __init__(self, images):
+    def __init__(self, images, code_directly=True):
         """
         Constructor
 
@@ -60,7 +60,16 @@ class HuffmanCoded(object):
         ----------
         images : numpy.ndarray (N, C, H, W)
             Images to be compressed
+        code_directly : bool, optional
+            If True, code for the image is computed directly
         """
+
+        if images is None:
+            self.num_images = 0
+            self.image_shape = (0, 0, 0)
+            self.huffman_tree = None
+            self.encoding = []
+            return
 
         if len(images.shape) == 3:
             images = np.expand_dims(images, 0)
@@ -69,9 +78,10 @@ class HuffmanCoded(object):
 
         self.num_images = images.shape[0]
         self.image_shape = images.shape[1:]
-        self.huffman_tree = self.__build_tree__(images)
+        self.huffman_tree = self.__build_tree__(self.image2histogram(images))
 
-        self.encoding = self.encodeImage(images)
+        if code_directly:
+            self.encoding = self.encodeImage(images)
 
     def image2histogram(self, images, normalised=True):
         """
@@ -96,14 +106,14 @@ class HuffmanCoded(object):
 
         return histogram
 
-    def __build_tree__(self, images):
+    def __build_tree__(self, histogram):
         """
         Build the Huffman tree
 
         Parameters
         ----------
-        images : numpy.ndarray (N, C, H, W)
-            Images to be compressed using the Huffman tree
+        histogram : numpy.ndarray (256)
+            The histogram of the image
 
         Returns
         -------
@@ -111,7 +121,6 @@ class HuffmanCoded(object):
             The root of the Huffman tree
         """
 
-        histogram = self.image2histogram(images, normalised=False)
         nodes = [Node(i, histogram[i]) for i in range(256)]
 
         while len(nodes) > 1:

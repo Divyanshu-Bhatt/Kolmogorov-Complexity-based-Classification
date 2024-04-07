@@ -1,95 +1,11 @@
-import time
-import torch
+import os
 import argparse
 import numpy as np
-import torchvision
 import pandas as pd
 from tqdm import tqdm
-import matplotlib.pyplot as plt
-import torchvision.transforms as transforms
-from compression.huffman import HuffmanCoded
-from compression.arithmetic import ArithmeticCoded
 
-from utils import sizeCalculator
-
-
-def loadMNIST(batch_size, train_bool=False, num_points=1024):
-    """
-    Load the MNIST dataset
-
-    Parameters
-    ----------
-    batch_size : int
-        The batch size
-    train_bool : bool, optional
-        If True, load the train dataset, else load the test dataset
-    num_points : int, optional
-        The number of images to load
-
-    Returns
-    -------
-    dataloader : torch.utils.data.DataLoader
-        The dataloader for the MNIST dataset
-    """
-
-    transform = transforms.Compose(
-        [
-            transforms.ToTensor(),
-            transforms.Lambda(lambda x: x.numpy()),
-            transforms.Lambda(lambda x: (x * 255).astype(np.uint8)),
-        ]
-    )
-
-    dataset = torchvision.datasets.MNIST(
-        root="./data", train=train_bool, download=True, transform=transform
-    )
-    indices = np.random.choice(len(dataset), num_points, replace=False)
-    dataset = torch.utils.data.Subset(dataset, indices)
-
-    dataloader = torch.utils.data.DataLoader(
-        dataset, batch_size=batch_size, shuffle=True
-    )
-    return dataloader
-
-
-def loadCIFAR10(batch_size, train_bool=False, num_points=1024):
-    """
-    Load the CIFAR10 dataset
-
-    Parameters
-    ----------
-    batch_size : int
-        The batch size
-    train_bool : bool, optional
-        If True, load the train dataset, else load the test dataset
-    num_points : int, optional
-        The number of images to load
-
-    Returns
-    -------
-    dataloader : torch.utils.data.DataLoader
-        The dataloader for the CIFAR10 dataset
-    """
-
-    transform = transforms.Compose(
-        [
-            transforms.ToTensor(),
-            transforms.Lambda(lambda x: x.numpy()),
-            transforms.Lambda(lambda x: (x * 255).astype(np.uint8)),
-        ]
-    )
-
-    dataset = torchvision.datasets.CIFAR10(
-        root="./data", train=train_bool, download=True, transform=transform
-    )
-    indices = np.random.choice(len(dataset), num_points, replace=False)
-    dataset = torch.utils.data.Subset(dataset, indices)
-
-    dataloader = torch.utils.data.DataLoader(
-        dataset, batch_size=batch_size, shuffle=True
-    )
-
-    return dataloader
+from utils import *
+from model.knn import getKNearestNeighbours
 
 
 if __name__ == "__main__":
@@ -97,52 +13,21 @@ if __name__ == "__main__":
     parser.add_argument("--batch_size", type=int, default=16)
     parser.add_argument("--dataset", type=str, default="MNIST")
     parser.add_argument("--num_points", type=int, default=512)
+    parser.add_argument("--k", type=int, default=5)
+    parser.add_argument("--distance_metric", type=str, default="EUCLID")
     args = parser.parse_args()
 
-    batch_size = args.batch_size
-
-    arithmetic_ratios = []
-    huffman_ratios = []
-    arithmetic_encoding_ratios = []
-    huffman_encoding_ratios = []
-    arithmetic_time = []
-    huffman_time = []
+    sub_classes = [0, 1, 2]
 
     if args.dataset == "MNIST":
-        dataloader = loadMNIST(batch_size, num_points=args.num_points)
+        trainloader, testloader = loadMNIST(
+            args.batch_size, num_points=args.num_points, classes=sub_classes
+        )
+        args.dataset = "MNIST" + "".join([str(i) for i in sub_classes])
+
     elif args.dataset == "CIFAR10":
-        dataloader = loadCIFAR10(batch_size, num_points=args.num_points)
-
-    for i, (batch_images, _) in enumerate(tqdm(dataloader, desc="Processing images")):
-        batch_images = batch_images.numpy()
-
-        start = time.time()
-        arithmetic = ArithmeticCoded(batch_images)
-        arithmetic_time.append(time.time() - start)
-
-        start = time.time()
-        huffman = HuffmanCoded(batch_images)
-        huffman_time.append(time.time() - start)
-
-        arithmetic_encoding_ratios.append(
-            sizeCalculator(arithmetic.encoding) / (np.prod(batch_images.shape) * 8)
+        trainloader, testloader = loadCIFAR10(
+            args.batch_size, num_points=args.num_points, classes=sub_classes
         )
-        huffman_encoding_ratios.append(
-            sizeCalculator(huffman.encoding) / (np.prod(batch_images.shape) * 8)
-        )
-        arithmetic_ratios.append(arithmetic.compressionRatio())
-        huffman_ratios.append(huffman.compressionRatio())
 
-        pd.DataFrame(
-            {
-                "arithmetic_including_histogram": arithmetic_ratios,
-                "huffman_including_tree": huffman_ratios,
-                "arithmetic_encoding": arithmetic_encoding_ratios,
-                "huffman_encoding": huffman_encoding_ratios,
-                "arithmetic_time": arithmetic_time,
-                "huffman_time": huffman_time,
-            }
-        ).to_csv(
-            f"./results/compression_ratios_{args.dataset}_{args.batch_size}.csv",
-            index=False,
-        )
+    getKNearestNeighbours(args.k, trainloader, testloader, args, args.distance_metric)

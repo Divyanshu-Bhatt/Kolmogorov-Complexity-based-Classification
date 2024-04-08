@@ -12,7 +12,7 @@ def getKNearestNeighboursBatched(
 
     Parameters
     ----------
-    k : int
+    k : int or list
         The number of nearest neighbours to get
     batch_images1 : numpy.ndarray
         The first batch of images
@@ -23,8 +23,8 @@ def getKNearestNeighboursBatched(
 
     Returns
     -------
-    k_nearest_indices : numpy.ndarray
-        The indices of the
+    distances : numpy.ndarray
+        The distances of the k nearest neighbours
     """
 
     if distance_metric == "EUCLID":
@@ -39,7 +39,44 @@ def getKNearestNeighboursBatched(
         distance_metric = huffmanCompressionDistanceHD
 
     distance_matrix = distance_metric(batch_images1, batch_images2)
-    indices = np.argsort(distance_matrix, axis=1)[:, :k]
+    #     indices = np.argsort(distance_matrix, axis=1)[:, :k]
+    # elif isinstance(k, list):
+    #     indices = []
+    #     for k_val in k:
+    #         breakpoint()
+    #         distance_matrix = distance_metric(batch_images1, batch_images2)
+    #         indices.append(np.argsort(distance_matrix, axis=1)[:, : k_val + 1])
+    # else:
+    #     raise ValueError("k must be an int or a list")
+
+    return distance_matrix
+
+
+def getIndices(distances, k):
+    """
+    Get the indices of the k nearest neighbours
+
+    Parameters
+    ----------
+    distances : numpy.ndarray
+        The distances of the k nearest neighbours
+    k : int or list
+        The number of nearest neighbours to get
+
+    Returns
+    -------
+    indices : numpy.ndarray or list of numpy.ndarray
+        The indices of the k nearest neighbours
+    """
+
+    if isinstance(k, int):
+        indices = np.argsort(distances, axis=1)[:, :k]
+    elif isinstance(k, list):
+        indices = []
+        for k_val in k:
+            indices.append(np.argsort(distances, axis=1)[:, :k_val])
+    else:
+        raise ValueError("k must be an int or a list")
 
     return indices
 
@@ -50,7 +87,7 @@ def getKNearestNeighbours(k, trainloader, testloader, args, distance_metric="EUC
 
     Parameters
     ----------
-    k : int
+    k : int or list
         The number of nearest neighbours to get
     trainloader : torch.utils.data.DataLoader
         The training data
@@ -63,53 +100,74 @@ def getKNearestNeighbours(k, trainloader, testloader, args, distance_metric="EUC
 
     Returns
     -------
-    predictions : numpy.ndarray
-        The predicted target values
-    targets : numpy.ndarray
-        The actual target values
+    predictions : dict
+        The predicted target values for different values of k and the actual target values
     """
 
-    predictions = []
-    actual_targets = []
+    predictions = {"actual_targets": []}
+    if isinstance(k, int):
+        predictions[f"predicted_targets_{k}"] = []
+    elif isinstance(k, list):
+        for k_val in k:
+            predictions[f"predicted_targets_{k_val}"] = []
 
     for i, (test_images, test_targets) in enumerate(
         tqdm(testloader, desc="Finding Nearest Neighbours")
     ):
+        distances = []
+        train_targets = []
         test_images = test_images.numpy()
         test_targets = test_targets.numpy()
 
-        # for j, (train_images, train_targets) in enumerate(trainloader):
-        for j, (train_images, train_targets) in enumerate(
+        for j, (train_images, batched_train_targets) in enumerate(
             tqdm(
                 trainloader,
                 desc=f"Finding Nearest Neighbours Batch{i}/{len(testloader)}",
             )
         ):
             train_images = train_images.numpy()
-            train_targets = train_targets.numpy()
+            batched_train_targets = batched_train_targets.numpy()
 
-            indices = getKNearestNeighboursBatched(
+            batched_distances = getKNearestNeighboursBatched(
                 k, test_images, train_images, distance_metric
             )
+            distances.append(batched_distances)
+            train_targets.append(batched_train_targets)
 
+        distances = np.concatenate(distances, axis=1)
+        train_targets = np.concatenate(train_targets, axis=0)
+        indices = getIndices(distances, k)
+
+        if isinstance(k, int):
             labels = train_targets[indices]
             prediction_labels = np.array(
                 [np.argmax(np.bincount(label)) for label in labels]
             )
+            predictions[f"predicted_targets_{k}"] = np.concatenate(
+                [predictions[f"predicted_targets_{k}"], prediction_labels], axis=0
+            )
+            predictions["actual_targets"] = np.concatenate(
+                [predictions["actual_targets"], test_targets], axis=0
+            )
 
-            predictions = np.concatenate([predictions, prediction_labels], axis=0)
-            actual_targets = np.concatenate([actual_targets, test_targets], axis=0)
+        elif isinstance(k, list):
+            for itr, k_val in enumerate(k):
+                labels = train_targets[indices[itr]]
+                prediction_labels = np.array(
+                    [np.argmax(np.bincount(label)) for label in labels]
+                )
+                predictions[f"predicted_targets_{k_val}"] = np.concatenate(
+                    [predictions[f"predicted_targets_{k_val}"], prediction_labels],
+                    axis=0,
+                )
+            predictions["actual_targets"] = np.concatenate(
+                [predictions["actual_targets"], test_targets], axis=0
+            )
 
-        pd.DataFrame(
-            {
-                "predictions": predictions,
-                "targets": actual_targets,
-            }
-        ).to_csv(
-            f"./results/clustering_{args.dataset}_{args.batch_size}_{k}_{distance_metric}.csv",
+        pd.DataFrame(predictions).to_csv(
+            f"./results/knn_{args.dataset}_{args.batch_size}_{distance_metric}.csv",
             index=False,
         )
-
     # return predictions, targets
 
 

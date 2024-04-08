@@ -1,0 +1,1 @@
+python main.py --batch_size=2 --dataset=MNIST --num_points=-1 --distance_metric=GZIP_NCD --k 3 5 7 9 11 13 15 17 19 21 23

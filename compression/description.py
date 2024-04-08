@@ -129,35 +129,3 @@ def getHuffmanArithmeticDesciription(dataloader, args):
         )
 
     return df
-
-
-def saveHuffmanCompressedImages(dataloader, path):
-    """
-    Save the compressed images using Huffman coding
-
-    Parameters
-    ----------
-    dataloader : torch.utils.data.DataLoader
-        The dataloader for the dataset
-    path : os.path
-        The path to save the compressed images
-    """
-
-    for i, (batch_images, targets) in enumerate(
-        tqdm(dataloader, desc="Saving Huffman Compressed Images")
-    ):
-        encodings = []
-        original_images = []
-        batch_images = batch_images.numpy()
-        targets = targets.numpy()
-
-        for j, image in enumerate(batch_images):
-            encodings.append(HuffmanCoded(image).encoding[0])
-            original_images.append(image)
-            pd.DataFrame(
-                {
-                    "encoding": encodings,
-                    "targets": targets[: j + 1],
-                }
-            ).to_csv(os.path.join(path, f"compressed_{i}.csv"), index=False)
-            np.save(os.path.join(path, f"original_{i}.npy"), original_images)

@@ -13,7 +13,6 @@ if __name__ == "__main__":
     parser.add_argument("--batch_size", type=int, default=16)
     parser.add_argument("--dataset", type=str, default="MNIST")
     parser.add_argument("--num_points", type=int, default=512)
-    # parser.add_argument("--k", type=int, default=5)
     parser.add_argument("--k", nargs="*", type=int, default=[5])
     parser.add_argument("--distance_metric", type=str, default="EUCLID")
     args = parser.parse_args()

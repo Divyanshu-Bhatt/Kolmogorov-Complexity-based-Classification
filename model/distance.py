@@ -1,6 +1,6 @@
 import numpy as np
 import gzip
-from compression.huffman import HuffmanCoded
+from compression.huffman_fast import HuffmanCodingFast as HuffmanCoded
 
 
 def hammingDistance(compressed_image1, compressed_image2):

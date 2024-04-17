@@ -1,7 +1,5 @@
 import numpy as np
-from binary_fractions import Binary
 import decimal
-import time
 from utils import sizeCalculator
 
 
@@ -242,6 +240,8 @@ class ArithmeticCoded(object):
 
         Returns
         -------
+        encoding_size : int
+            The size of the encoding
         size : int
             The size of the Arithmetic coded image
         """
@@ -249,8 +249,8 @@ class ArithmeticCoded(object):
         size = 0
         size += sizeCalculator(self.image_shape)
         size += sizeCalculator(self.cdf)
-        size += sizeCalculator(self.encoding)
-        return size
+        encoding_size = sizeCalculator(self.encoding)
+        return encoding_size, size + encoding_size
 
     def compressionRatio(self):
         """

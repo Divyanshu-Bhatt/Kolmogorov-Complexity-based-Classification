@@ -238,6 +238,8 @@ class HuffmanCoded(object):
 
         Returns
         -------
+        encoding_size : int
+            The size of the encoding
         size : int
             The size of the Huffman coded image
         """
@@ -245,9 +247,9 @@ class HuffmanCoded(object):
         size = 0
         size += sizeCalculator(self.image_shape)
         size += self.huffman_tree.__sizeof__()
-        size += sizeCalculator(self.encoding)
+        encoding_size = sizeCalculator(self.encoding)
 
-        return size
+        return encoding_size, size + encoding_size
 
     def compressionRatio(self):
         """

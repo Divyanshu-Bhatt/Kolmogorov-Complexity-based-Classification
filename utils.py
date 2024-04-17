@@ -32,6 +32,8 @@ def sizeCalculator(value):
         return sizeCalculator(int(str(value).split(".")[1]))
     elif isinstance(value, str):
         return len(value)
+    elif isinstance(value, bytes):
+        return len(value) * 8
 
 
 def loadMNISTDataset(train_bool=False):
@@ -101,6 +103,7 @@ def loadMNIST(
     shuffle=True,
     classes=None,
     train_split=0.8,
+    split=True,
 ):
     """
     Load the MNIST dataset
@@ -140,6 +143,12 @@ def loadMNIST(
     if num_points != -1:
         indices = np.random.choice(len(dataset), num_points, replace=False)
         dataset = torch.utils.data.Subset(dataset, indices)
+
+    if not split:
+        dataloader = torch.utils.data.DataLoader(
+            dataset, batch_size=batch_size, shuffle=shuffle
+        )
+        return dataloader, None
 
     train_size = int(train_split * len(dataset))
     test_size = len(dataset) - train_size
@@ -185,6 +194,12 @@ def loadCIFAR10(batch_size, train_bool=False, num_points=1024, shuffle=True, spl
     if num_points != -1:
         indices = np.random.choice(len(dataset), num_points, replace=False)
         dataset = torch.utils.data.Subset(dataset, indices)
+
+    if not split:
+        dataloader = torch.utils.data.DataLoader(
+            dataset, batch_size=batch_size, shuffle=shuffle
+        )
+        return dataloader, None
 
     train_size = int(split * len(dataset))
     test_size = len(dataset) - train_size

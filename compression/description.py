@@ -6,6 +6,7 @@ from compression.svd import SVDCompressed
 from compression.huffman import HuffmanCoded
 from compression.btc import BlockTruncationCoding
 from compression.arithmetic import ArithmeticCoded
+from compression.jpeg import JPEGCompressed
 from utils import sizeCalculator
 from image_metrics import mseError, ssimIndexImages
 
@@ -23,10 +24,8 @@ def getArithmeticDesc(batch_images, cache):
 
     Returns
     -------
-    encoding_ratio : float
-        The encoding compression ratio
-    ratio : float
-        The compression ratio
+    cache : dict
+        The cache for storing the metrics
     """
 
     arithmetic = ArithmeticCoded(batch_images)
@@ -50,10 +49,8 @@ def getHuffmanDesc(batch_images, cache):
 
     Returns
     -------
-    encoding_ratio : float
-        The encoding compression ratio
-    ratio : float
-        The compression ratio
+    cache : dict
+        The cache for storing the metrics
     """
 
     huffman = HuffmanCoded(batch_images)
@@ -77,8 +74,8 @@ def getGzipCompressionDesc(batch_images, cache):
 
     Returns
     -------
-    encoding_ratio : float
-        The encoding compression ratio
+    cache : dict
+        The cache for storing the metrics
     """
 
     compressed_image = gzip.compress(batch_images)
@@ -102,14 +99,8 @@ def getBTCCompressionDesc(batch_images, block_size, cache):
 
     Returns
     -------
-    encoding_ratio : float
-        The encoding compression ratio
-    ratio : float
-        The compression ratio
-    mse : float
-        The mean squared error
-    ssim_index : float
-        The structural similarity index
+    cache : dict
+        The cache for storing the metrics
     """
 
     btc = BlockTruncationCoding(block_size, batch_images)
@@ -146,10 +137,8 @@ def getSVDDesc(batch_images, rank, cache):
 
     Returns
     -------
-    encoding_ratio : float
-        The encoding compression ratio
-    ratio : float
-        The compression ratio
+    cache : dict
+        The cache for storing the metrics
     """
 
     svd = SVDCompressed(rank, batch_images)
@@ -170,7 +159,45 @@ def getSVDDesc(batch_images, rank, cache):
     return cache
 
 
-def getCompressionDescription(dataloader, compression_type, block_size=8, rank=10):
+def getJpegCompressionDesc(batch_images, quality, cache):
+    """
+    Get compression description for JPEG compression
+
+    Parameters
+    ----------
+    batch_images : numpy.ndarray
+        The image to compress
+    cache : dict
+        The cache for storing the metrics
+
+    Returns
+    -------
+    cache : dict
+        The cache for storing the metrics
+    """
+
+    jpeg = JPEGCompressed(quality, batch_images)
+    encoding_ratio, ratio = jpeg.compressionRatio()
+    decoded_images = jpeg.decode()
+
+    mse = mseError(batch_images, decoded_images)
+    ssim_index = []
+    for i in range(batch_images.shape[0]):
+        for j in range(batch_images.shape[1]):
+            ssim_index.append(ssimIndexImages(batch_images[i, j], decoded_images[i, j]))
+
+    ssim_index = np.mean(ssim_index)
+    cache["encoding_ratio"].append(encoding_ratio)
+    cache["ratio"].append(ratio)
+    cache["mse"].append(mse)
+    cache["ssim_index"].append(ssim_index)
+
+    return cache
+
+
+def getCompressionDescription(
+    dataloader, compression_type, block_size=8, rank=10, quality=10
+):
     """
     Get the compression description for the given dataloader
 
@@ -184,6 +211,8 @@ def getCompressionDescription(dataloader, compression_type, block_size=8, rank=1
         The block size for BTC coding if compression_type is BTC
     rank : int, optional
         The rank for SVD compression if compression_type is SVD
+    quality : int, optional
+        The quality for JPEG compression if compression_type is JPEG
     """
 
     cache = {}
@@ -206,6 +235,9 @@ def getCompressionDescription(dataloader, compression_type, block_size=8, rank=1
         compression = lambda x, y: getSVDDesc(x, rank, y)
         cache = {"encoding_ratio": [], "mse": [], "ssim_index": []}
         path_name += f"_{rank}"
+    elif compression_type == "jpeg":
+        compression = lambda x, y: getJpegCompressionDesc(x, quality, y)
+        cache = {"encoding_ratio": [], "ratio": [], "mse": [], "ssim_index": []}
 
     path_name += "_compression.csv"
     for batch_images, _ in tqdm(dataloader):

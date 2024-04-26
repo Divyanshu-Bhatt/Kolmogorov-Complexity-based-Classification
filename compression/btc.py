@@ -130,13 +130,16 @@ class BlockTruncationCoding(object):
             The total size of the BTC coded image
         """
 
-        # TODO Maybe use np.vectorise here.
+        vectorised_size = np.vectorize(sizeCalculator)
         size_image = np.prod(np.shape(self.quantized_images))
-        mean_size = sizeCalculator(self.block_means)
-        var_size = sizeCalculator(self.block_std)
+        mean_size = vectorised_size(self.block_means)
+        var_size = vectorised_size(self.block_std)
         other_sizes = sizeCalculator(
             [self.block_size, self.num_images, self.image_shape]
         )
+
+        mean_size = np.sum(mean_size)
+        var_size = np.sum(var_size)
 
         size_total = size_image + mean_size + var_size + other_sizes
         return size_image, size_total

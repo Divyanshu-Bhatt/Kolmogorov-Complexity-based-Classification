@@ -15,6 +15,7 @@ if __name__ == "__main__":
     parser.add_argument("--compression_technique", type=str, default="btc")
     parser.add_argument("--block_size", type=int, default=8)
     parser.add_argument("--rank", type=int, default=3)
+    parser.add_argument("--quality", type=int, default=10)
     args = parser.parse_args()
 
     if args.dataset == "MNIST":
@@ -28,7 +29,12 @@ if __name__ == "__main__":
         loader, _ = loadCIFAR10(
             args.batch_size, num_points=args.num_points, split=False
         )
+    
+    elif args.dataset == "IMAGENETTE":
+        loader = loadImagenette(args.batch_size)
+    
+ 
 
     getCompressionDescription(
-        loader, args.compression_technique, args.block_size, args.rank
+        loader, args.compression_technique, args.block_size, args.rank, args.quality, args
     )

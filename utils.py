@@ -1,4 +1,5 @@
 import numpy as np
+import sys
 from binary_fractions import Binary
 from tqdm import tqdm
 import decimal
@@ -16,10 +17,11 @@ def sizeCalculator(value):
     value : float or tuple or list or int
         The value to calculate the size of
     """
-
+    
+    sys.set_int_max_str_digits(0)
     if isinstance(value, (int, float)):
         return len(str(Binary(value))[2:])
-    elif isinstance(value, (tuple, list, np.ndarray)):
+    elif isinstance(value, (tuple, list)):
         size = 0
         for val in value:
             size += sizeCalculator(val)
@@ -29,11 +31,39 @@ def sizeCalculator(value):
     elif isinstance(value, (decimal.Decimal)):
         if value == 0:
             return 0
-        return sizeCalculator(int(str(value).split(".")[1]))
+        return len(str(Binary(int(str(value).split('.')[1])))[2:])
     elif isinstance(value, str):
         return len(value)
     elif isinstance(value, bytes):
         return len(value) * 8
+
+def loadImagenette(batch_size=1, shuffle=False):
+    """
+    Load a subset ImagenetteDataset 
+
+    Parameters
+    ----------
+    batch_size : int
+        The batch size
+    shuffle : bool, optional
+        If True, shuffle the dataset 
+
+    Returns
+    -------
+    dataset : torch.utils.data.Dataset
+        The Imagenette Dataset
+    """
+
+    transform = transforms.Compose(
+        [transforms.ToTensor(),
+         transforms.Resize((224, 224)),
+         transforms.Lambda(lambda x: x.numpy()),
+         transforms.Lambda(lambda x: (x * 255).astype(np.uint8)),]
+    )
+    dataset = torchvision.datasets.ImageFolder("./data/imagenette/", transform=transform)
+    dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
+
+    return dataloader
 
 
 def loadMNISTDataset(train_bool=False):

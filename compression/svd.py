@@ -46,9 +46,9 @@ class SVDCompressed(object):
 
         U, S, VT = np.linalg.svd(images, full_matrices=False)
 
-        U = U[:, :, :, : self.rank]
-        S = S[:, :, : self.rank]
-        VT = VT[:, :, : self.rank, :]
+        U = (np.round(U[:, :, :, : self.rank], 1) * 1e5).astype(np.int32)
+        S = (np.round(S[:, :, : self.rank], 1) * 1e2).astype(np.int32)
+        VT = (np.round(VT[:, :, : self.rank, :], 1) * 1e5).astype(np.int32)
 
         return U, S, VT
 
@@ -72,6 +72,9 @@ class SVDCompressed(object):
         """
 
         U, S, VT = self.U, self.S, self.VT
+        U = U.astype(np.float32)/1e5
+        S = S.astype(np.float32)/1e2
+        VT = VT.astype(np.float32)/1e5
 
         s = np.zeros((S.shape[0], S.shape[1], S.shape[2], S.shape[2]))
         s[:, :, np.arange(S.shape[2]), np.arange(S.shape[2])] = S
@@ -90,9 +93,10 @@ class SVDCompressed(object):
             The size of the compressed image
         """
 
-        U_size = sizeCalculator(self.U)
-        S_size = sizeCalculator(self.S)
-        VT_size = sizeCalculator(self.VT)
+        vectorised_size = np.vectorize(sizeCalculator)
+        U_size = np.sum(vectorised_size(self.U))
+        S_size = np.sum(vectorised_size(self.S))
+        VT_size = np.sum(vectorised_size(self.VT))
 
         return U_size + S_size + VT_size
 

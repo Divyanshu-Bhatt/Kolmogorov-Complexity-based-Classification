@@ -97,9 +97,9 @@ class JPEGCompressed(object):
         """
 
         other_sizes = sizeCalculator([self.num_images, self.image_shape])
-        size_encoding = sum([len(encoding.getvalue()) for encoding in self.encoding])
+        size_encoding = sum([len(encoding.getvalue()) * 8 for encoding in self.encoding])
 
-        return other_sizes + size_encoding, size_encoding
+        return size_encoding, other_sizes + size_encoding
 
     def compressionRatio(self):
         """

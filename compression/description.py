@@ -1,3 +1,4 @@
+import os
 import gzip
 import numpy as np
 import pandas as pd
@@ -113,7 +114,7 @@ def getBTCCompressionDesc(batch_images, block_size, cache):
         for j in range(batch_images.shape[1]):
             ssim_index.append(ssimIndexImages(batch_images[i, j], decoded_images[i, j]))
     ssim_index = np.mean(ssim_index)
-
+    
     cache["encoding_ratio"].append(encoding_ratio)
     cache["ratio"].append(ratio)
     cache["mse"].append(mse)
@@ -196,7 +197,7 @@ def getJpegCompressionDesc(batch_images, quality, cache):
 
 
 def getCompressionDescription(
-    dataloader, compression_type, block_size=8, rank=10, quality=10
+    dataloader, compression_type, block_size=8, rank=10, quality=10, args=None
 ):
     """
     Get the compression description for the given dataloader
@@ -213,15 +214,19 @@ def getCompressionDescription(
         The rank for SVD compression if compression_type is SVD
     quality : int, optional
         The quality for JPEG compression if compression_type is JPEG
+    args : argparse
+        All the arguments for running this function
     """
 
     cache = {}
-    path_name = f"{compression_type}"
+    path_name = f"./results/{compression_type}/{args.dataset}/"
+    if not os.path.exists(path_name):
+        os.makedirs(path_name)
 
     if compression_type == "btc":
         compression = lambda x, y: getBTCCompressionDesc(x, block_size, y)
         cache = {"encoding_ratio": [], "ratio": [], "mse": [], "ssim_index": []}
-        path_name += f"_{block_size}"
+        path_name += f"block_{block_size}"
     elif compression_type == "arithmetic":
         compression = getArithmeticDesc
         cache = {"encoding_ratio": [], "ratio": []}
@@ -234,12 +239,14 @@ def getCompressionDescription(
     elif compression_type == "svd":
         compression = lambda x, y: getSVDDesc(x, rank, y)
         cache = {"encoding_ratio": [], "mse": [], "ssim_index": []}
-        path_name += f"_{rank}"
+        path_name += f"rank_{rank}"
     elif compression_type == "jpeg":
         compression = lambda x, y: getJpegCompressionDesc(x, quality, y)
         cache = {"encoding_ratio": [], "ratio": [], "mse": [], "ssim_index": []}
+        path_name += f"quality_{quality}"
+    
+    path_name += f"_batch{args.batch_size}.csv"
 
-    path_name += "_compression.csv"
     for batch_images, _ in tqdm(dataloader):
         batch_images = batch_images.numpy()
         cache = compression(batch_images, cache)

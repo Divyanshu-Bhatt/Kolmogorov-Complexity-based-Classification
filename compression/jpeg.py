@@ -97,7 +97,9 @@ class JPEGCompressed(object):
         """
 
         other_sizes = sizeCalculator([self.num_images, self.image_shape])
-        size_encoding = sum([len(encoding.getvalue()) * 8 for encoding in self.encoding])
+        size_encoding = sum(
+            [len(encoding.getvalue()) * 8 for encoding in self.encoding]
+        )
 
         return size_encoding, other_sizes + size_encoding
 
@@ -118,25 +120,3 @@ class JPEGCompressed(object):
         total_ratio = size_total / (np.prod(self.image_shape) * 8 * self.num_images)
 
         return image_ratio, total_ratio
-
-
-if __name__ == "__main__":
-    from PIL import Image
-    from io import BytesIO
-
-    # Create dummy red PIL Image
-    # im = Image.new("RGB", (320, 240), "red")
-    # im = Image.open("test_quality.jpg")
-    import matplotlib.pyplot as plt
-
-    im = Image.open("4.2.03.tiff")
-    breakpoint()
-    # Create in-memory JPEG
-    buffer = BytesIO()
-    im.save(buffer, format="JPEG", quality=10)
-
-    # Check first few bytes
-    JPEG = buffer.getvalue()
-    print(JPEG)
-    plt.imshow(im)
-    plt.show()

@@ -41,12 +41,12 @@ Further, one can also specify the hyperparameters for the compression techniques
 
 ## Results
 <figure>
-  <img src="results/datasets_entropy.png" alt="Embeddings Visulization" >
+  <img src="results/datasets_entropy.png" alt="Embeddings Visulization", width=500>
   <figcaption>The graph represents the probability distribution of normalized pixel values within the image dataset. It is derived by extending the discrete distribution to a continuous distribution using a kernel density estimator, which provides a comprehensive view of the image dataset's overall distribution and composition.</figcaption>
 </figure>
 
 <figure>
-  <img src="results/mnist_desc.png" alt="Embeddings Visulization", width=300> <img src="results/cifar_desc.png" alt="Embeddings Visulization", width=300>
+  <img src="results/mnist_desc.png" alt="Embeddings Visulization", width=500> <img src="results/cifar_desc.png" alt="Embeddings Visulization", width=500>
   <figcaption>The graphs depict the average compression ratios achieved by the encoding schemes (Arithmetic, Huffman, and GZIP) on the
 MNIST and CIFAR10 datasets respectively across varying batch sizes</figcaption>
 </figure>

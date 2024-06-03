@@ -7,13 +7,36 @@ from compression.description import getCompressionDescription
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--batch_size", type=int, default=16)
-    parser.add_argument("--dataset", type=str, default="MNIST")
     parser.add_argument("--num_points", type=int, default=512)
     parser.add_argument("--k", nargs="*", type=int, default=[5])
-    parser.add_argument("--distance_metric", type=str, default="EUCLID")
+    parser.add_argument(
+        "--distance_metric",
+        type=str,
+        default="EUCLID",
+        choices=["EUCLID", "GZIP_NCD", "GZIP_HD", "HUFF_NCD", "HUFF_HD"],
+    )
+    parser.add_argument(
+        "--dataset",
+        type=str,
+        default="MNIST",
+        choices=["MNIST", "CIFAR10", "IMAGENETTE"],
+    )
 
     # If compression Description then
-    parser.add_argument("--compression_technique", type=str, default=None)
+    parser.add_argument(
+        "--compression_technique",
+        type=str,
+        default=None,
+        choices=[
+            None,
+            "arithmetic",
+            "btc",
+            "gzip",
+            "huffman",
+            "jpeg",
+            "svd",
+        ],
+    )
     parser.add_argument("--block_size", type=int, default=8)
     parser.add_argument("--rank", type=int, default=3)
     parser.add_argument("--quality", type=int, default=10)
